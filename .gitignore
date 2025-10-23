@@ -1,0 +1,44 @@
+# Docker build artifacts
+dcgm/
+bin/
+lib/
+share/
+
+# DCGM binary directory (user-specific)
+Workspace/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Docker
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prometheus data
+prometheus_data/
+
+# Temporary files
+*.tmp
+/tmp/
+/internal/
+/docs/

@@ -1,0 +1,114 @@
+# OpenTelemetry Collector Configuration
+# This example shows how to collect DCGM metrics and export them to various backends
+
+receivers:
+  # Prometheus receiver to scrape DCGM metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'dcgm-fake-gpus'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['dcgm-exporter:9400']
+          metric_relabel_configs:
+            # Filter out GPU 0 which shows zeros
+            - source_labels: [gpu]
+              regex: '0'
+              action: drop
+
+processors:
+  # Add resource attributes
+  resource:
+    attributes:
+      - key: service.name
+        value: dcgm-fake-exporter
+        action: upsert
+      - key: deployment.environment
+        value: development
+        action: upsert
+  
+  # Batch metrics for efficiency
+  batch:
+    timeout: 10s
+    send_batch_size: 1024
+  
+  # Add metric metadata
+  metricstransform:
+    transforms:
+      # Convert power from milliwatts to watts
+      - include: dcgm_power_usage
+        action: update
+        operations:
+          - action: experimental_scale_value
+            experimental_scale: 0.001
+
+exporters:
+  # Debug exporter - prints to stdout
+  logging:
+    loglevel: info
+  
+  # Prometheus exporter - re-export as Prometheus
+  prometheus:
+    endpoint: "0.0.0.0:9464"
+    namespace: dcgm
+  
+  # OTLP exporter - send to OTLP backend
+  otlp:
+    endpoint: otel-collector:4317
+    tls:
+      insecure: true
+  
+  # AWS CloudWatch EMF exporter
+  awsemf:
+    namespace: DCGM/FakeGPUs
+    region: us-east-1
+    dimension_rollup_option: NoDimensionRollup
+    log_group_name: '/aws/metrics/dcgm'
+    log_stream_name: 'fake-gpu-metrics'
+  
+  # Datadog exporter
+  datadog:
+    api:
+      key: ${DD_API_KEY}
+      site: datadoghq.com
+    hostname: fake-gpu-host
+  
+  # New Relic exporter (via OTLP)
+  otlphttp:
+    endpoint: https://otlp.nr-data.net:4318
+    headers:
+      api-key: ${NEW_RELIC_API_KEY}
+
+service:
+  pipelines:
+    # Default pipeline - collect and export to multiple backends
+    metrics:
+      receivers: [prometheus]
+      processors: [resource, batch]
+      exporters: [logging, prometheus]
+    
+    # AWS CloudWatch pipeline
+    metrics/cloudwatch:
+      receivers: [prometheus]
+      processors: [resource, batch, metricstransform]
+      exporters: [awsemf]
+    
+    # Datadog pipeline
+    metrics/datadog:
+      receivers: [prometheus]
+      processors: [resource, batch]
+      exporters: [datadog]
+    
+    # New Relic pipeline
+    metrics/newrelic:
+      receivers: [prometheus]
+      processors: [resource, batch]
+      exporters: [otlphttp]
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679

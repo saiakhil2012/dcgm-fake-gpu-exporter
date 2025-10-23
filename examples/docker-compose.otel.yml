@@ -1,0 +1,77 @@
+version: '3.8'
+
+# Extended docker-compose with OpenTelemetry Collector
+# Usage: docker-compose -f docker-compose.otel.yml up -d
+
+services:
+  dcgm-exporter:
+    build: .
+    image: dcgm-fake-gpu-exporter:latest
+    container_name: dcgm-exporter
+    ports:
+      - "9400:9400"
+      - "5555:5555"
+    environment:
+      - NUM_GPUS=${NUM_GPUS:-4}
+      - EXPORTER_PORT=9400
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9400/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./examples/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "9464:9464"   # Prometheus exporter
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "13133:13133" # Health check
+      - "55679:55679" # zpages
+    depends_on:
+      - dcgm-exporter
+    restart: unless-stopped
+    environment:
+      - DD_API_KEY=${DD_API_KEY:-your-datadog-api-key}
+      - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY:-your-newrelic-api-key}
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./examples/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - dcgm-exporter
+      - otel-collector
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./examples/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/dcgm.json:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

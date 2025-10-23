@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  dcgm-exporter:
+    build: .
+    image: dcgm-fake-gpu-exporter:latest
+    container_name: dcgm-exporter
+    ports:
+      - "9400:9400"  # Prometheus metrics
+      - "5555:5555"  # DCGM port (optional)
+    environment:
+      - NUM_GPUS=${NUM_GPUS:-4}
+      - EXPORTER_PORT=9400
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9400/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Optional: Include Prometheus for quick testing
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./examples/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - dcgm-exporter
+    restart: unless-stopped
+    profiles:
+      - with-prometheus
+
+volumes:
+  prometheus_data:
