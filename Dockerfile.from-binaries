@@ -1,6 +1,6 @@
-# Dockerfile
-# Default: Build from scratch using DCGM binaries
-# See Dockerfile.from-image for building from existing image
+# Dockerfile.from-binaries
+# Build from scratch using DCGM binaries
+# Use this for initial setup when you have the binaries
 
 FROM ubuntu:22.04
 
@@ -17,18 +17,27 @@ RUN pip3 install --no-cache-dir \
 	opentelemetry-sdk-extension-aws \
 	psutil
 
+# Create directory structure
 RUN mkdir -p /root/Workspace/DCGM/_out/Linux-amd64-debug/bin
 RUN mkdir -p /root/Workspace/DCGM/_out/Linux-amd64-debug/lib
 RUN mkdir -p /root/Workspace/DCGM/_out/Linux-amd64-debug/share/dcgm_tests
-COPY dcgm/bin/nv-hostengine /root/Workspace/DCGM/_out/Linux-amd64-debug/bin/nv-hostengine
-COPY dcgm/lib/ /root/Workspace/DCGM/_out/Linux-amd64-debug/lib/
-COPY dcgm/share/dcgm_tests/ /root/Workspace/DCGM/_out/Linux-amd64-debug/share/dcgm_tests/
+
+# Copy DCGM binaries (from host)
+COPY bin/nv-hostengine /root/Workspace/DCGM/_out/Linux-amd64-debug/bin/nv-hostengine
+COPY lib/ /root/Workspace/DCGM/_out/Linux-amd64-debug/lib/
+COPY share/dcgm_tests/ /root/Workspace/DCGM/_out/Linux-amd64-debug/share/dcgm_tests/
+
+# Copy Python scripts
 COPY dcgm_exporter.py /root/Workspace/DCGM/_out/Linux-amd64-debug/dcgm_exporter.py
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY dcgm_fake_manager.py /usr/local/bin/dcgm_fake_manager.py
 
-RUN chmod +x /root/Workspace/DCGM/_out/Linux-amd64-debug/dcgm_exporter.py /usr/local/bin/docker-entrypoint.sh /usr/local/bin/dcgm_fake_manager.py
+# Set executable permissions
+RUN chmod +x /root/Workspace/DCGM/_out/Linux-amd64-debug/dcgm_exporter.py \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/dcgm_fake_manager.py
 
+# Environment variables
 ENV LD_LIBRARY_PATH=/root/Workspace/DCGM/_out/Linux-amd64-debug/lib
 ENV LD_PRELOAD=/root/Workspace/DCGM/_out/Linux-amd64-debug/lib/libnvml_injection.so.1.0.0
 ENV NVML_INJECTION_MODE=True
@@ -40,9 +49,6 @@ ENV METRIC_UPDATE_INTERVAL=30
 ENV GPU_START_INDEX=1
 ENV DCGM_DIR=/root/Workspace/DCGM/_out/Linux-amd64-debug
 ENV PATH="$PATH:/root/Workspace/DCGM/_out/Linux-amd64-debug/bin"
-
-# Optionally allow mounting external DCGM directory at /dcgm-host
-VOLUME ["/dcgm-host"]
 
 EXPOSE 5555 9400
 

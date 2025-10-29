@@ -1,0 +1,50 @@
+# Prometheus configuration for multiple DCGM profile instances
+
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+scrape_configs:
+  - job_name: 'dcgm-stable'
+    static_configs:
+      - targets: ['dcgm-stable:9400']
+        labels:
+          profile: 'stable'
+          instance: 'node1'
+
+  - job_name: 'dcgm-spike'
+    static_configs:
+      - targets: ['dcgm-spike:9400']
+        labels:
+          profile: 'spike'
+          instance: 'node1'
+
+  - job_name: 'dcgm-mixed'
+    static_configs:
+      - targets: ['dcgm-mixed:9400']
+        labels:
+          profile: 'mixed'
+          instance: 'node1'
+
+  - job_name: 'dcgm-scale'
+    static_configs:
+      - targets: ['dcgm-scale:9400']
+        labels:
+          profile: 'wave'
+          instance: 'scale-test'
+          gpu_count: '100'
+
+  - job_name: 'dcgm-chaos'
+    static_configs:
+      - targets: ['dcgm-chaos:9400']
+        labels:
+          profile: 'chaos'
+          instance: 'chaos-test'
+
+  - job_name: 'dcgm-cluster'
+    static_configs:
+      - targets: 
+          - 'dcgm-node1:9400'
+          - 'dcgm-node2:9400'
+        labels:
+          cluster: 'test-cluster'

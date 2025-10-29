@@ -15,6 +15,9 @@ A lightweight Prometheus exporter that simulates NVIDIA GPUs using DCGM's inject
 - 📈 **Prometheus Compatible** - Standard metrics format
 - 🔧 **Configurable** - Customize number of GPUs and their behavior
 - 🔄 **Dynamic Metrics** - Realistic varying values that update automatically
+- 🎭 **Metric Profiles** - Simulate different GPU behaviors (stable, spike, degrading, faulty, chaos, wave)
+- 📐 **Scalable** - Test with 1 to 1000+ GPUs
+- 🎛️ **Per-GPU Control** - Different behavior profiles for each GPU
 
 ## 🚀 Quick Start
 
@@ -42,6 +45,35 @@ curl http://localhost:9400/metrics
 
 ### Option 2: Building from Source
 
+**Two build methods available:**
+
+#### Method A: From Existing Image (Recommended for Dev Machines)
+If you have a previous version of the image but not the DCGM binaries:
+
+```bash
+# Clone the repository
+git clone https://github.com/<username>/dcgm-fake-gpu-exporter.git
+cd dcgm-fake-gpu-exporter
+
+# Smart build (auto-detects best method)
+./build-smart.sh
+
+# Or explicitly from existing image
+./build-smart.sh --from-image
+
+# Run
+docker run -d -p 9400:9400 dcgm-fake-gpu-exporter:latest
+```
+
+**Benefits:**
+- ✅ No DCGM binaries needed
+- ✅ Fast build (10-30 seconds)
+- ✅ Perfect for updating code on new machines
+- ✅ Ideal for development iterations
+
+#### Method B: From DCGM Binaries (Initial Setup)
+If you have DCGM binaries or building for the first time:
+
 ```bash
 # Clone the repository
 git clone https://github.com/<username>/dcgm-fake-gpu-exporter.git
@@ -51,6 +83,8 @@ cd dcgm-fake-gpu-exporter
 # Place your DCGM build at: ~/Workspace/DCGM/_out/Linux-amd64-debug/
 
 # Build and run
+./build-smart.sh --from-binaries
+# Or use legacy script
 ./build.sh
 
 # Or use Docker Compose
@@ -59,6 +93,14 @@ docker-compose up -d
 # View metrics
 curl http://localhost:9400/metrics
 ```
+
+**Benefits:**
+- ✅ Complete build from scratch
+- ✅ Reproducible builds
+- ✅ Creates base image for other machines
+- ✅ Suitable for CI/CD pipelines
+
+📚 **[See detailed build methods guide](docs/BUILD_METHODS.md)** for choosing the right method.
 
 ## 📊 Available Metrics
 
@@ -80,15 +122,77 @@ curl http://localhost:9400/metrics
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NUM_FAKE_GPUS` | `4` | Number of fake GPUs to create |
+| `NUM_FAKE_GPUS` | `4` | Number of fake GPUs to create (1-1000+) |
+| `METRIC_PROFILE` | `static` | Metric behavior profile (see profiles below) |
+| `GPU_PROFILES` | - | Comma-separated profiles per GPU (overrides METRIC_PROFILE) |
+| `METRIC_UPDATE_INTERVAL` | `30` | Seconds between metric updates |
+| `GPU_START_INDEX` | `1` | Starting GPU index (for cluster simulation) |
 | `EXPORTER_PORT` | `9400` | Prometheus metrics port |
 | `DCGM_DIR` | `/root/Workspace/DCGM/_out/Linux-amd64-debug` | Path to DCGM binaries in container |
 
+### Metric Profiles
+
+Simulate different GPU behaviors for testing dashboards and alerting:
+
+| Profile | Description | Use Case |
+|---------|-------------|----------|
+| `static` | Fixed random values (backward compatible) | Existing setups, predictable metrics |
+| `stable` | Minimal variation, steady state | Production-like steady workloads |
+| `spike` | Random sudden spikes (20% chance) | Testing spike detection, auto-scaling |
+| `wave` | Sine wave patterns | Batch jobs, cyclical workloads |
+| `degrading` | Gradual performance decline | Hardware aging, thermal throttling |
+| `faulty` | Intermittent failures (10% chance) | Fault detection, alerting systems |
+| `chaos` | Completely random values | Stress testing, chaos engineering |
+
+📚 **[See full profile documentation](docs/PROFILES.md)** for detailed behavior, use cases, and examples.
+
 ### Example Configurations
 
-**8 GPUs:**
+**8 GPUs with spike profile:**
 ```bash
-docker run -d -p 9400:9400 -e NUM_FAKE_GPUS=8 dcgm-fake-gpu-exporter
+docker run -d -p 9400:9400 \
+  -e NUM_FAKE_GPUS=8 \
+  -e METRIC_PROFILE=spike \
+  dcgm-fake-gpu-exporter
+```
+
+**Per-GPU profiles (mixed behavior):**
+```bash
+docker run -d -p 9400:9400 \
+  -e NUM_FAKE_GPUS=4 \
+  -e GPU_PROFILES=stable,spike,faulty,degrading \
+  dcgm-fake-gpu-exporter
+```
+
+**Large-scale testing (100 GPUs):**
+```bash
+docker run -d -p 9400:9400 \
+  -e NUM_FAKE_GPUS=100 \
+  -e METRIC_PROFILE=wave \
+  dcgm-fake-gpu-exporter
+```
+
+**Fast updates for testing:**
+```bash
+docker run -d -p 9400:9400 \
+  -e METRIC_UPDATE_INTERVAL=10 \
+  -e METRIC_PROFILE=chaos \
+  dcgm-fake-gpu-exporter
+```
+
+**Cluster simulation (multiple nodes):**
+```bash
+# Node 1: GPUs 1-8
+docker run -d -p 9401:9400 \
+  -e NUM_FAKE_GPUS=8 \
+  -e GPU_START_INDEX=1 \
+  dcgm-fake-gpu-exporter
+
+# Node 2: GPUs 9-16
+docker run -d -p 9402:9400 \
+  -e NUM_FAKE_GPUS=8 \
+  -e GPU_START_INDEX=9 \
+  dcgm-fake-gpu-exporter
 ```
 
 **Custom port:**
@@ -214,6 +318,64 @@ export DCGM_DIR="$HOME/Workspace/DCGM/_out/Linux-amd64-debug"
 - **Testing**: Test Prometheus/Grafana/OTEL setups for GPU monitoring
 - **Training**: Learn DCGM, GPU metrics, and observability tools
 - **Cost Savings**: Avoid spinning up expensive GPU instances for development
+- **Alerting**: Test alert rules with different GPU behavior patterns
+- **Chaos Engineering**: Simulate GPU failures and degradation
+- **Load Testing**: Test monitoring systems with 100+ GPUs
+- **Dashboard Development**: Build and iterate on Grafana dashboards quickly
+
+## 🚀 Migration to Production
+
+When you're ready to move from fake GPUs to real hardware:
+
+### Step 1: Replace the Exporter
+
+```yaml
+# docker-compose.yml - Development (Fake GPUs)
+services:
+  dcgm-exporter:
+    image: your-registry/dcgm-fake-gpu-exporter
+    ports:
+      - "9400:9400"
+    environment:
+      - NUM_FAKE_GPUS=4
+      - METRIC_PROFILE=stable
+```
+
+```yaml
+# docker-compose.yml - Production (Real GPUs)
+services:
+  dcgm-exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:latest
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    ports:
+      - "9400:9400"
+    cap_add:
+      - SYS_ADMIN
+```
+
+### Step 2: Keep Your Monitoring Stack
+
+✅ **No changes needed** to:
+- Prometheus scrape configs
+- Grafana dashboards
+- Alert rules
+- Metric names and labels
+
+The metrics are compatible between fake and real exporters!
+
+### Step 3: Update Queries (Optional)
+
+If you filtered out GPU 0 in fake mode, you can remove that filter:
+
+```promql
+# Fake GPU queries (filter GPU 0)
+dcgm_gpu_temp{gpu!="0"}
+
+# Real GPU queries (all GPUs valid)
+dcgm_gpu_temp
+```
 
 ## 🐛 Troubleshooting
 
@@ -291,6 +453,20 @@ curl -s http://localhost:9400/metrics | grep dcgm_gpu_temp
 # dcgm_gpu_temp{gpu="4",device="nvidia4"} 73
 ```
 
+### Testing Different Profiles
+
+```bash
+# Test spike profile
+docker run -d -p 9400:9400 -e METRIC_PROFILE=spike dcgm-fake-gpu-exporter
+watch -n 5 'curl -s http://localhost:9400/metrics | grep dcgm_gpu_temp'
+
+# Test wave profile
+docker run -d -p 9400:9400 -e METRIC_PROFILE=wave dcgm-fake-gpu-exporter
+
+# Test with 100 GPUs
+docker run -d -p 9400:9400 -e NUM_FAKE_GPUS=100 -e METRIC_PROFILE=stable dcgm-fake-gpu-exporter
+```
+
 ### With Prometheus
 
 ```bash
@@ -307,6 +483,23 @@ open http://localhost:9090
 dcgm_gpu_temp{gpu!="0"}
 ```
 
+### Testing Multiple Profiles
+
+Use the examples docker-compose:
+
+```bash
+# Test all profiles at once
+cd examples
+docker-compose -f docker-compose.profiles.yml up -d
+
+# Each profile on different port:
+# Stable:  http://localhost:9400/metrics
+# Spike:   http://localhost:9401/metrics (with --profile spike)
+# Mixed:   http://localhost:9402/metrics (with --profile mixed)
+# Scale:   http://localhost:9403/metrics (with --profile scale)
+# Chaos:   http://localhost:9404/metrics (with --profile chaos)
+```
+
 ## ⚠️ Limitations
 
 - **GPU Names/UUIDs**: Show as `<<<NULL>>>` due to DCGM fake entity limitations
@@ -319,17 +512,31 @@ dcgm_gpu_temp{gpu!="0"}
 
 ```
 .
-├── README.md                   # This file
-├── LICENSE                     # MIT License
-├── Dockerfile                  # Docker image definition
-├── docker-compose.yml          # Compose configuration
-├── docker-entrypoint.sh        # Container entrypoint
-├── build.sh                    # Build script
-├── dcgm_fake_manager.py        # Python manager for fake GPUs
-├── dcgm_exporter.py           # Prometheus exporter
-├── prometheus.yml              # Sample Prometheus config
+├── README.md                        # This file
+├── LICENSE                          # MIT License
+├── Dockerfile                       # Default Dockerfile (points to from-binaries)
+├── Dockerfile.from-binaries         # Build from DCGM binaries (initial setup)
+├── Dockerfile.from-image            # Build from existing image (dev machines)
+├── docker-compose.yml               # Compose configuration
+├── docker-compose-smart.yml         # Smart compose with auto-detection
+├── docker-entrypoint.sh             # Container entrypoint
+├── build.sh                         # Legacy build script (from binaries)
+├── build-smart.sh                   # Smart build script (auto-detects method)
+├── test-features.sh                 # Automated test suite
+├── dcgm_fake_manager.py             # Python manager for fake GPUs (with profiles)
+├── dcgm_exporter.py                 # Prometheus exporter
+├── prometheus.yml                   # Sample Prometheus config
+├── CHANGELOG.md                     # Version history
+├── IMPLEMENTATION.md                # Implementation details
+├── docs/
+│   ├── PROFILES.md                  # Detailed profile documentation
+│   └── BUILD_METHODS.md             # Build methods guide
 └── examples/
-    └── grafana-dashboard.json  # Sample Grafana dashboard
+    ├── docker-compose.profiles.yml  # Profile examples
+    ├── prometheus-profiles.yml      # Multi-instance Prometheus config
+    ├── docker-compose.otel.yml      # OpenTelemetry example
+    ├── grafana-dashboard.json       # Sample Grafana dashboard
+    └── otel-collector-config.yaml   # OTEL collector config
 ```
 
 ## 🤝 Contributing
@@ -368,10 +575,15 @@ See [LICENSE](LICENSE) file for details.
 
 ## 🗺️ Roadmap
 
+- [x] Configurable metric patterns (stable, spike, wave, degrading, faulty, chaos)
+- [x] Per-GPU profile configuration
+- [x] Scalable GPU counts (1-1000+)
+- [x] Environment-based configuration
 - [ ] Pre-built Docker images on Docker Hub
 - [ ] GitHub Actions CI/CD pipeline
-- [ ] Grafana dashboard templates
+- [ ] Grafana dashboard templates for each profile
 - [ ] Additional metric fields (PCIe, NVLink)
-- [ ] Configurable metric patterns (sine waves, random, static)
 - [ ] Multi-architecture support (ARM64 via cross-compilation)
 - [ ] Helm chart for Kubernetes deployment
+- [ ] JSON policy files for complex scenarios
+- [ ] Time-based profile switching (simulate day/night cycles)

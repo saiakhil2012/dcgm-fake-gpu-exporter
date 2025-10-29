@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  # Example 1: Stable profile for baseline testing
+  dcgm-stable:
+    image: dcgm-fake-gpu-exporter
+    container_name: dcgm-stable
+    ports:
+      - "9400:9400"
+    environment:
+      - NUM_FAKE_GPUS=4
+      - METRIC_PROFILE=stable
+      - METRIC_UPDATE_INTERVAL=30
+    restart: unless-stopped
+
+  # Example 2: Spike profile for testing alerting
+  dcgm-spike:
+    image: dcgm-fake-gpu-exporter
+    container_name: dcgm-spike
+    ports:
+      - "9401:9400"
+    environment:
+      - NUM_FAKE_GPUS=4
+      - METRIC_PROFILE=spike
+      - METRIC_UPDATE_INTERVAL=15
+    restart: unless-stopped
+    profiles:
+      - spike
+
+  # Example 3: Mixed profiles (per-GPU)
+  dcgm-mixed:
+    image: dcgm-fake-gpu-exporter
+    container_name: dcgm-mixed
+    ports:
+      - "9402:9400"
+    environment:
+      - NUM_FAKE_GPUS=4
+      - GPU_PROFILES=stable,spike,faulty,degrading
+      - METRIC_UPDATE_INTERVAL=30
+    restart: unless-stopped
+    profiles:
+      - mixed
+
+  # Example 4: Large scale testing (100 GPUs)
+  dcgm-scale:
+    image: dcgm-fake-gpu-exporter
+    container_name: dcgm-scale
+    ports:
+      - "9403:9400"
+    environment:
+      - NUM_FAKE_GPUS=100
+      - METRIC_PROFILE=wave
+      - METRIC_UPDATE_INTERVAL=60
+    restart: unless-stopped
+    profiles:
+      - scale
+
+  # Example 5: Chaos testing
+  dcgm-chaos:
+    image: dcgm-fake-gpu-exporter
+    container_name: dcgm-chaos
+    ports:
+      - "9404:9400"
+    environment:
+      - NUM_FAKE_GPUS=8
+      - METRIC_PROFILE=chaos
+      - METRIC_UPDATE_INTERVAL=10
+    restart: unless-stopped
+    profiles:
+      - chaos
+
+  # Example 6: Cluster simulation (Node 1)
+  dcgm-node1:
+    image: dcgm-fake-gpu-exporter
+    container_name: dcgm-node1
+    ports:
+      - "9405:9400"
+    environment:
+      - NUM_FAKE_GPUS=8
+      - GPU_START_INDEX=1
+      - METRIC_PROFILE=stable
+    restart: unless-stopped
+    profiles:
+      - cluster
+
+  # Example 7: Cluster simulation (Node 2)
+  dcgm-node2:
+    image: dcgm-fake-gpu-exporter
+    container_name: dcgm-node2
+    ports:
+      - "9406:9400"
+    environment:
+      - NUM_FAKE_GPUS=8
+      - GPU_START_INDEX=9
+      - METRIC_PROFILE=stable
+    restart: unless-stopped
+    profiles:
+      - cluster
+
+  # Prometheus for monitoring all profiles
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus-profiles.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: unless-stopped
+    profiles:
+      - with-prometheus

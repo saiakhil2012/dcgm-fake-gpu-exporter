@@ -1,0 +1,35 @@
+# Dockerfile.from-image
+# Build new version FROM existing dcgm-fake-gpu-exporter image
+# Use this when you have the base image but not the DCGM binaries
+
+ARG BASE_IMAGE=dcgm-fake-gpu-exporter:latest
+FROM ${BASE_IMAGE}
+
+# Update Python scripts with new profile support
+COPY dcgm_fake_manager.py /usr/local/bin/dcgm_fake_manager.py
+COPY dcgm_exporter.py /root/Workspace/DCGM/_out/Linux-amd64-debug/dcgm_exporter.py
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+
+# Ensure executable permissions
+RUN chmod +x /usr/local/bin/dcgm_fake_manager.py \
+    && chmod +x /root/Workspace/DCGM/_out/Linux-amd64-debug/dcgm_exporter.py \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Update environment variables with new defaults
+ENV METRIC_PROFILE=static
+ENV METRIC_UPDATE_INTERVAL=30
+ENV GPU_START_INDEX=1
+
+# All other ENV vars inherited from base image:
+# - LD_LIBRARY_PATH
+# - LD_PRELOAD
+# - NVML_INJECTION_MODE
+# - PYTHONPATH
+# - EXPORTER_PORT
+# - NUM_FAKE_GPUS
+# - DCGM_DIR
+# - PATH
+
+EXPOSE 5555 9400
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

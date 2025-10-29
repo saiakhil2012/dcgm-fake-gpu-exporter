@@ -1,0 +1,12 @@
+# Exclude large source directories
+DCGM/
+DCGM_subset.tar.gz
+.git/
+.DS_Store
+*.md
+docs/
+internal/
+examples/
+
+# Keep only the prepared dcgm directory for build
+!dcgm/
