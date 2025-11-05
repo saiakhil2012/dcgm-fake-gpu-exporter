@@ -707,6 +707,9 @@ class DCGMFakeManager:
                 base_values = {}  # Profiles generate their own values
                 metrics = profile.apply(gpu_id, base_values)
                 
+                # Convert all metrics to integers (DCGM expects i64, not floats)
+                metrics = {k: int(v) for k, v in metrics.items()}
+                
                 # Inject the metrics
                 dcgm_field_injection_helpers.inject_value(
                     handle.handle, gpu_id, dcgm_fields.DCGM_FI_DEV_GPU_TEMP,

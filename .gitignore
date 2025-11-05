@@ -1,11 +1,12 @@
-# Docker build artifacts
+# DCGM binaries and extracted files
+DCGM/
 dcgm/
+dcgm_optimized/
+DCGM_subset.tar.gz
+Workspace/
 bin/
 lib/
 share/
-
-# DCGM binary directory (user-specific)
-Workspace/
 
 # Python
 __pycache__/
@@ -13,15 +14,25 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 venv/
 ENV/
-*.egg-info/
-dist/
-build/
-
-# Docker
-*.log
+env/
 
 # IDE
 .vscode/
@@ -29,16 +40,34 @@ build/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
+
+# Logs
+*.log
+logs/
+nv-hostengine.log
+
+# Environment
+.env
+.env.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
 
 # Prometheus data
 prometheus_data/
 
-# Temporary files
-*.tmp
-/tmp/
-/internal/
-/docs/
+# GitHub token (security)
+.github_token
+github_token.txt
+
+# Build artifacts
+dcgm-binaries/

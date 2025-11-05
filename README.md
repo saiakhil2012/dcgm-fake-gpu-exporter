@@ -2,10 +2,19 @@
 
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Container Registry](https://img.shields.io/badge/ghcr.io-images-blue)](https://github.com/saiakhil2012/dcgm-fake-gpu-exporter/pkgs/container/dcgm-fake-gpu-exporter)
 
-A lightweight Prometheus exporter that simulates NVIDIA GPUs using DCGM's injection framework. Perfect for testing, development, and demos **without requiring real GPU hardware**.
+A powerful Prometheus exporter that simulates realistic NVIDIA GPU behavior using DCGM's injection framework. Test GPU monitoring, dashboards, and alerting systems **without expensive hardware** - from single GPUs to entire data center clusters.
 
-> ⚠️ **Important**: This tool uses pre-built DCGM binaries. Building DCGM from source takes 10+ hours. This repository saves you that time by providing a ready-to-use Docker setup.
+## 🎯 Why This Tool?
+
+- **💰 Save Costs**: No need for expensive GPU instances during development
+- **🧪 Test at Scale**: Simulate 1 to 1000+ GPUs instantly
+- **🎭 Realistic Scenarios**: 7 behavior profiles from stable workloads to chaos engineering
+- **⚡ Quick Setup**: One command to get running - no 10+ hour DCGM builds
+- **🔄 Production-Ready**: Compatible with real DCGM metrics for seamless migration
+
+> **Perfect for**: Dashboard development, alerting system testing, chaos engineering, CI/CD pipelines, training, and demos
 
 ## ✨ Features
 
@@ -29,7 +38,7 @@ A lightweight Prometheus exporter that simulates NVIDIA GPUs using DCGM's inject
 
 ### Option 1: Using Pre-built Docker Image (Recommended)
 
-If someone has published the pre-built image:
+Pull the pre-built image from GitHub Container Registry:
 
 ```bash
 docker run -d \
@@ -37,7 +46,7 @@ docker run -d \
   -p 9400:9400 \
   -p 5555:5555 \
   -e NUM_FAKE_GPUS=4 \
-  <username>/dcgm-fake-gpu-exporter:latest
+  ghcr.io/saiakhil2012/dcgm-fake-gpu-exporter:latest
 
 # View metrics
 curl http://localhost:9400/metrics
@@ -52,7 +61,7 @@ If you have a previous version of the image but not the DCGM binaries:
 
 ```bash
 # Clone the repository
-git clone https://github.com/<username>/dcgm-fake-gpu-exporter.git
+git clone https://github.com/saiakhil2012/dcgm-fake-gpu-exporter.git
 cd dcgm-fake-gpu-exporter
 
 # Smart build (auto-detects best method)
@@ -76,7 +85,7 @@ If you have DCGM binaries or building for the first time:
 
 ```bash
 # Clone the repository
-git clone https://github.com/<username>/dcgm-fake-gpu-exporter.git
+git clone https://github.com/saiakhil2012/dcgm-fake-gpu-exporter.git
 cd dcgm-fake-gpu-exporter
 
 # You need DCGM binaries - see "Building DCGM Binaries" section below
@@ -566,8 +575,8 @@ See [LICENSE](LICENSE) file for details.
 
 ## 📮 Support
 
-- **Issues**: [GitHub Issues](https://github.com/<username>/dcgm-fake-gpu-exporter/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/<username>/dcgm-fake-gpu-exporter/discussions)
+- **Issues**: [GitHub Issues](https://github.com/saiakhil2012/dcgm-fake-gpu-exporter/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/saiakhil2012/dcgm-fake-gpu-exporter/discussions)
 
 ---
 
