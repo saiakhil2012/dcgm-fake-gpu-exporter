@@ -34,24 +34,43 @@ Complete "Swiss Army Knife" demo showcasing **all capabilities**:
 
 ```bash
 cd deployments
+
+# Basic demo (HTTP + Prometheus + Grafana only)
 docker-compose -f docker-compose-demo.yml up -d
+
+# Full demo with UDS consumer (optional)
+docker-compose --profile uds -f docker-compose-demo.yml up -d
 ```
+
+> ⚠️ **UDS Profile Limitation**: The `--profile uds` option works reliably on **Linux x86_64** systems but may experience connection issues on **macOS (ARM64/Apple Silicon)** due to qemu emulation limitations. The HTTP endpoint works fine on all platforms.
 
 **Services:**
 - `dcgm-exporter` - DCGM Fake GPU Exporter with HTTP (:9400) + UDS enabled
 - `prometheus` - Prometheus server (:9090) - scrapes HTTP endpoint
 - `grafana` - Grafana dashboards (:3000)
-- `uds-consumer` - Live demo consuming metrics via Unix Domain Socket
+- `uds-consumer` (optional, `--profile uds`) - Live demo consuming metrics via Unix Domain Socket
 
 **Features:**
-- 2 Grafana dashboards (default + multi-profile)
+- 🎨 **2 Grafana Dashboards**:
+  - **DCGM GPU Overview** - Basic single-GPU monitoring
+  - **DCGM Multi-Profile Demo** ⭐ - Showcases all 4 GPUs with different profiles
+    - Temperature comparison across wave, spike, stable, degrading profiles
+    - Utilization heatmap showing patterns across all GPUs
+    - Power usage trends and comparisons
+    - Individual GPU gauges for quick status
+    - Memory usage tracking
+    - Profile distribution pie chart
+    - Fleet-wide average statistics
 - 8 Prometheus alert rules
 - Automatic dashboard provisioning
-- 7-day metric retention
+- 🔄 **Fresh data on every restart** - Uses tmpfs storage (no persistent volumes)
+- 7-day metric retention (long history while running, clean slate on restart)
 - **UDS consumer** - Live demonstration of socket-based metric retrieval
 
 **Access:**
 - Grafana: http://localhost:3000 (admin/admin)
+  - **Default Dashboard**: DCGM Multi-Profile Demo (auto-opens)
+  - Navigate to dashboards to see both options
 - Prometheus: http://localhost:9090
 - Exporter HTTP: http://localhost:9400/metrics
 - UDS logs: `docker logs -f uds-consumer-demo`
@@ -100,7 +119,7 @@ The `docker-compose-demo.yml` showcases **three ways** to consume metrics:
 
 ### Running the Demo
 
-**1. Full-featured demo (HTTP + UDS + Grafana):**
+**1. Full-featured demo (HTTP + Prometheus + Grafana):**
 ```bash
 cd deployments
 docker-compose -f docker-compose-demo.yml up -d
@@ -112,6 +131,20 @@ sleep 30
 # - Grafana: http://localhost:3000 (admin/admin)
 # - Prometheus: http://localhost:9090
 # - HTTP metrics: http://localhost:9400/metrics
+```
+
+> **💡 Clean Slate on Every Restart**: The demo stack uses **tmpfs** (in-memory storage) for Prometheus and Grafana data. This means:
+> - ✅ Fresh metrics every time you restart
+> - ✅ No old data pollution between restarts
+> - ✅ Perfect for demos and presentations
+> - ⚠️ Data is lost when containers stop (by design)
+> 
+> Simply `docker-compose down` and `up` for a completely clean environment!
+
+**2. Full demo with UDS consumer (Linux x86_64 recommended):**
+```bash
+cd deployments
+docker-compose --profile uds -f docker-compose-demo.yml up -d
 
 # Watch UDS consumer in action:
 docker logs -f uds-consumer-demo
@@ -127,7 +160,13 @@ docker logs -f uds-consumer-demo
 #   dcgm_gpu_temp{gpu="2",...} 72.3
 ```
 
-**2. Production deployment:**
+> **Note on UDS Consumer**: While you can directly query the UDS socket from your host using `curl --unix-socket /tmp/dcgm-metrics/metrics.sock http://localhost/metrics`, the `uds-consumer` service provides a **live demo** showing how to integrate UDS into applications. It's particularly useful for:
+> - Learning UDS integration patterns
+> - Testing UDS performance and reliability
+> - Demonstrating real-time metric streaming
+> - Showcasing the complete "Swiss Army Knife" capabilities
+
+**3. Production deployment:**
 ```bash
 cd deployments
 docker-compose up -d
@@ -136,9 +175,9 @@ docker-compose up -d
 curl http://localhost:9400/metrics
 ```
 
-**3. Custom configuration:**
+**4. Custom configuration:**
 ```bash
-# Edit docker-compose.yml
+# Edit docker-compose.yml or docker-compose-demo.yml
 # Customize environment variables:
 # - NUM_FAKE_GPUS=8
 # - METRIC_PROFILE=wave

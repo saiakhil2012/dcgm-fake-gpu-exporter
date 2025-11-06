@@ -22,29 +22,18 @@ services:
     container_name: prometheus-demo
     ports:
       - "9090:9090"
+    user: "65534:65534"  # Run as nobody user (prometheus default)
     volumes:
       - ../examples/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ../grafana/provisioning/alerts:/etc/prometheus/alerts:ro
-      - prometheus_data:/prometheus
+    tmpfs:
+      - /prometheus:uid=65534,gid=65534,mode=1777,size=2g  # Writable tmpfs for prometheus user
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=7d'
+      - '--storage.tsdb.retention.time=7d'  # Long history while running, but fresh on restart
       - '--web.enable-lifecycle'
     restart: unless-stopped
-
-  # UDS Consumer Demo - Python client using Unix Domain Socket
-  uds-consumer:
-    image: python:3.11-slim
-    container_name: uds-consumer-demo
-    volumes:
-      - dcgm_sockets:/var/run/dcgm:ro  # Read-only access to socket
-      - ./examples/uds-consumer-demo.sh:/app/uds-consumer-demo.sh:ro
-    working_dir: /app
-    command: bash /app/uds-consumer-demo.sh
-    restart: unless-stopped
-    depends_on:
-      - dcgm-exporter
 
   # Grafana - Visualizes data from Prometheus
   grafana:
@@ -52,19 +41,34 @@ services:
     container_name: grafana-demo
     ports:
       - "3000:3000"
+    user: "472:472"  # Run as grafana user
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_INSTALL_PLUGINS=
-      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/dcgm-gpu-overview.json
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/dcgm-multi-profile-demo.json
       - GF_UNIFIED_ALERTING_ENABLED=true
       - GF_ALERTING_ENABLED=false  # Disable legacy alerting
     volumes:
-      - grafana_data:/var/lib/grafana
       - ../grafana/provisioning:/etc/grafana/provisioning:ro
+    tmpfs:
+      - /var/lib/grafana:uid=472,gid=472,mode=1777,size=1g  # Writable tmpfs for grafana user
     restart: unless-stopped
 
+  # UDS Consumer Demo - Shows Unix Domain Socket usage (optional)
+  uds-consumer:
+    profiles:
+      - uds  # Only runs when: docker-compose --profile uds up
+    image: python:3.11-slim
+    container_name: uds-consumer-demo
+    volumes:
+      - dcgm_sockets:/var/run/dcgm:ro  # Read-only access to UDS
+      - ./examples/uds-consumer-demo.sh:/app/uds-consumer-demo.sh:ro
+    command: bash /app/uds-consumer-demo.sh
+    restart: unless-stopped
+    depends_on:
+      - dcgm-exporter
+
 volumes:
-  prometheus_data:
-  grafana_data:
   dcgm_sockets:  # Shared volume for Unix Domain Socket
+
