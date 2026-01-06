@@ -393,13 +393,15 @@ class ProfileFactory:
 
 class DCGMFakeManager:
     def __init__(self, dcgm_dir=None, num_gpus=4, metric_profile='static', 
-                 gpu_profiles=None, update_interval=30, gpu_start_index=1):
+                 gpu_profiles=None, update_interval=30, gpu_start_index=1,
+                 hostengine_listen_addr=None):
         self.dcgm_dir = dcgm_dir or os.path.expanduser('~/Workspace/DCGM/_out/Linux-amd64-debug')
         self.num_gpus = num_gpus
         self.metric_profile = metric_profile
         self.gpu_profiles = gpu_profiles  # List of profiles per GPU
         self.update_interval = update_interval
         self.gpu_start_index = gpu_start_index
+        self.hostengine_listen_addr = hostengine_listen_addr  # IP address or 'ALL' for all interfaces
         self.pid_file = '/tmp/dcgm-fake-gpu.pid'
         self.log_file = '/tmp/dcgm-fake.log'
         self.hostengine_pid = None
@@ -498,10 +500,19 @@ class DCGMFakeManager:
         # Open log file
         log_f = open(self.log_file, 'w')
 
+        # Build command with optional arguments
+        cmd = [hostengine_path, '-n']  # -n = no daemon mode
+        if self.hostengine_listen_addr:
+            cmd.extend(['-b', self.hostengine_listen_addr])
+            if self.hostengine_listen_addr.upper() == 'ALL':
+                log_warn("Host engine binding to ALL interfaces")
+            else:
+                log_info(f"Host engine binding to {self.hostengine_listen_addr}")
+
         # Start the process in foreground mode (-n flag) but as a background subprocess
         # This prevents nv-hostengine from daemonizing itself
         process = subprocess.Popen(
-            [hostengine_path, '-n'],  # -n = no daemon mode
+            cmd,
             stdout=log_f,
             stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL,
@@ -925,11 +936,12 @@ Available Profiles:
   {', '.join(ProfileFactory.list_profiles())}
 
 Environment Variables:
-  NUM_FAKE_GPUS            Number of GPUs (default: 4)
-  METRIC_PROFILE           Profile name (default: static)
-  GPU_PROFILES             Comma-separated per-GPU profiles (overrides METRIC_PROFILE)
-  METRIC_UPDATE_INTERVAL   Update interval in seconds (default: 30)
-  GPU_START_INDEX          Starting GPU index (default: 1)
+  NUM_FAKE_GPUS                 Number of GPUs (default: 4)
+  METRIC_PROFILE                Profile name (default: static)
+  GPU_PROFILES                  Comma-separated per-GPU profiles (overrides METRIC_PROFILE)
+  METRIC_UPDATE_INTERVAL        Update interval in seconds (default: 30)
+  GPU_START_INDEX               Starting GPU index (default: 1)
+  DCGM_HOSTENGINE_LISTEN_ADDR   Host engine bind address (default: 127.0.0.1, use ALL for all interfaces)
         """
     )
 
@@ -947,6 +959,8 @@ Environment Variables:
                        help='Starting GPU index (default: from GPU_START_INDEX env or 1)')
     parser.add_argument('-d', '--dcgm-dir',
                        help='DCGM directory (default: ~/Workspace/DCGM/_out/Linux-amd64-debug)')
+    parser.add_argument('--listen-addr',
+                       help='Host engine bind address (default: 127.0.0.1, use ALL for all interfaces)')
 
     args = parser.parse_args()
 
@@ -978,6 +992,9 @@ Environment Variables:
         log_warn("Invalid GPU_START_INDEX value, using default: 1")
         gpu_start_index = 1
 
+    # Host engine listen address (None means default 127.0.0.1)
+    hostengine_listen_addr = args.listen_addr or os.environ.get('DCGM_HOSTENGINE_LISTEN_ADDR') or None
+
     try:
         manager = DCGMFakeManager(
             dcgm_dir=args.dcgm_dir,
@@ -985,7 +1002,8 @@ Environment Variables:
             metric_profile=metric_profile,
             gpu_profiles=gpu_profiles,
             update_interval=update_interval,
-            gpu_start_index=gpu_start_index
+            gpu_start_index=gpu_start_index,
+            hostengine_listen_addr=hostengine_listen_addr
         )
 
         if args.action == 'start':
