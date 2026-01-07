@@ -340,6 +340,7 @@ curl http://localhost:9400/metrics
 | `EXPORTER_PORT` | `9400` | Prometheus metrics port |
 | `ENABLE_UDS` | `false` | Enable Unix Domain Socket server (`true`/`false`) |
 | `UDS_SOCKET_PATH` | `/var/run/dcgm/metrics.sock` | Path to UDS socket (inside container) |
+| `DCGM_HOSTENGINE_LISTEN_ADDR` | `127.0.0.1` | Host engine bind address (use `ALL` for all interfaces) |
 | `DCGM_DIR` | `/root/Workspace/DCGM/_out/Linux-amd64-debug` | Path to DCGM binaries in container |
 
 ### Metric Profiles
@@ -424,6 +425,14 @@ docker run -d -p 9402:9400 \
 **Custom port:**
 ```bash
 docker run -d -p 9401:9400 dcgm-fake-gpu-exporter
+```
+
+**Container networking (allow external DCGM connections):**
+```bash
+# Enable other containers to connect to host engine on port 5555
+docker run -d -p 9400:9400 -p 5555:5555 \
+  -e DCGM_HOSTENGINE_LISTEN_ADDR=ALL \
+  dcgm-fake-gpu-exporter
 ```
 
 ## 📈 Integration Examples
